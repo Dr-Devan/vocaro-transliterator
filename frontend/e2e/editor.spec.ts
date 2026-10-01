@@ -1,0 +1,45 @@
+import { test, expect } from '@playwright/test';
+test('convert, edit, reanalyze, restore, and export', async ({page, context}) => {
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  await page.goto('/');
+  await page.getByLabel('일본어 가사', {exact:true}).fill('空へ\n\n君は歌う');
+  await page.getByRole('button',{name:'발음 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('소라에');
+  await page.getByRole('button',{name:'空',exact:true}).click();
+  await page.getByLabel('일본어 읽기').fill('くう');
+  await expect(page.getByRole('button',{name:'수정 적용'})).toBeDisabled();
+  await page.getByRole('button',{name:'발음 계산'}).click();
+  await expect(page.getByLabel('한글 발음', {exact:false}).last()).toHaveValue('쿠우');
+  await page.getByRole('button',{name:'수정 적용'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('쿠우에');
+  await page.getByRole('button',{name:'다시 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('쿠우에');
+  await page.getByRole('button',{name:'복사하기'}).click();
+  await expect.poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n')).toContain('空へ\n쿠우에\n\n君は歌う');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('vocaro-draft-v1'))).toContain('쿠우');
+  await page.reload();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('쿠우에');
+  await page.screenshot({path:'test-results/desktop.png',fullPage:true});
+  await page.getByLabel('일본어 가사',{exact:true}).fill('夢へ');
+  await expect(page.getByRole('button',{name:'복사하기'})).toBeDisabled();
+});
+test('mobile has no horizontal overflow', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  await expect(page.getByRole('heading',{level:1})).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path:'test-results/mobile.png',fullPage:true});
+});
+test('line overrides lock token editing until restored', async ({page}) => {
+  await page.goto('/');
+  await page.getByLabel('일본어 가사',{exact:true}).fill('空へ');
+  await page.getByRole('button',{name:'발음 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('소라에');
+  await page.getByLabel('1행 한글 발음').fill('소라 에');
+  await expect(page.getByRole('button',{name:'空',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'다시 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('소라 에');
+  await page.getByRole('button',{name:'행 직접 수정 중 · 단어별 결과로 복원'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('소라에');
+  await expect(page.getByRole('button',{name:'空',exact:true})).toBeEnabled();
+});
