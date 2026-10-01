@@ -3,6 +3,9 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from .contracts import AnalyzeRequest
 from .reading import Reader
 from .transliteration import transliterate, is_kana, RULE_VERSION
 
@@ -13,11 +16,15 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Vocaro Transliterator", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Vocaro Transliterator", version="0.2.0", lifespan=lifespan)
 
 
-class AnalyzeRequest(BaseModel):
-    text: str = Field(max_length=20000)
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request, exc):
+    errors = exc.errors()
+    message = next((e["msg"].removeprefix("Value error, ") for e in errors if e["type"] == "value_error"),
+                   "입력 길이와 형식을 확인해 주세요. 원문은 최대 20,000자·500줄입니다.")
+    return JSONResponse(status_code=422, content={"detail": message})
 
 
 class ReadingRequest(BaseModel):
@@ -26,14 +33,12 @@ class ReadingRequest(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "ruleVersion": RULE_VERSION}
+    return {"status": "ok", "version": app.version, "ruleVersion": RULE_VERSION}
 
 
 @app.post("/api/analyze")
 def analyze(body: AnalyzeRequest):
-    if len(body.text.replace("\r\n", "\n").replace("\r", "\n").split("\n")) > 500:
-        raise HTTPException(422, "500줄 이내로 입력해 주세요.")
-    return app.state.reader.analyze(body.text)
+    return app.state.reader.analyze(body.text, body.dictionary, body.overrides)
 
 
 @app.post("/api/transliterate")

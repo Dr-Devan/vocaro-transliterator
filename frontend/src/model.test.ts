@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { mergeResult, lineOutput, exportText, type Result, type Line } from './model';
+import { applyRange, collectOverrides, dictionarySignature, mergeResult, lineOutput, exportText, preserveLines, wikiLiteral, type Result, type Line } from './model';
+import { parseDraft } from './draft';
 const line: Line = {id:'line-0',source:'空へ',segments:[
   {start:0,end:1,surface:'空',reading:'そら',hangul:'소라',kind:'word',attach:false,warnings:[]},
   {start:1,end:2,surface:'へ',reading:'え',hangul:'에',kind:'word',attach:true,warnings:[]},
@@ -24,5 +25,50 @@ describe('editing and export', () => {
     const merged = mergeResult(result,{...result,lines:[edited]});
     expect(lineOutput(merged.lines[0])).toBe('쿠우에');
     expect(merged.lines[0].source).toBe('空へ');
+  });
+  it('merges a range and supplies one override to the API', () => {
+    const edited = applyRange(result,0,0,1,'ゆめ','유메');
+    expect(edited.lines[0].segments).toHaveLength(1);
+    expect(collectOverrides(edited,'空へ')).toEqual([{line:0,start:0,end:2,surface:'空へ',reading:'ゆめ',hangul:'유메'}]);
+    expect(collectOverrides(edited,'夢へ')).toEqual([]);
+  });
+  it('keeps translation only when source is unchanged', () => {
+    const previous = {...result,lines:[{...line,translation:'하늘로'}]};
+    expect(preserveLines(result,previous).lines[0].translation).toBe('하늘로');
+    expect(preserveLines({...result,lines:[{...line,source:'海へ'}]},previous).lines[0].translation).toBeUndefined();
+  });
+  it('exports three rows even for blank stanzas and empty translations', () => {
+    const data = {...result,lines:[line,{id:'blank',source:'',segments:[]},line]};
+    const rows = exportText(data,'wikidot').split('\n').slice(1);
+    expect(rows).toHaveLength(9);
+    expect(rows.every(s => s.startsWith('|| ') && s.endsWith(' ||'))).toBe(true);
+    expect(exportText(result,'triple')).toBe('空へ\n소라에\n');
+  });
+  it('escapes table separators, links, HTML and escape markers', () => {
+    const escaped = wikiLiteral('空||[[html]]<script>@@**&');
+    expect(escaped).not.toContain('||');
+    expect(escaped).not.toContain('[[html]]');
+    expect(escaped).not.toContain('<script>');
+    expect(escaped).not.toContain('@@');
+    expect(escaped).toContain('&#124;');
+    expect(escaped.replace(/@<((?:&#\d+;)+)>@/g, (_, entities:string) => entities.replace(/&#(\d+);/g, (_,code:string) => String.fromCodePoint(Number(code))))).toBe('空||[[html]]<script>@@**&');
+  });
+  it('dictionary order does not mark an unchanged result stale', () => {
+    const a={surface:'宇宙',reading:'そら'}, b={surface:'明日',reading:'あす'};
+    expect(dictionarySignature([a,b])).toBe(dictionarySignature([b,a]));
+  });
+  it('round trips a v2 project and migrates v1', () => {
+    const draft={version:2,text:'空へ',result,dictionary:[{surface:'空',reading:'そら'}]};
+    expect(parseDraft(JSON.stringify(draft))).toEqual(draft);
+    expect(parseDraft(JSON.stringify({version:1,text:'空へ',result})).dictionary).toEqual([]);
+  });
+  it('rejects corrupted segments rather than crashing at render', () => {
+    const corrupt={...result,lines:[{...line,segments:[{}]}]};
+    expect(() => parseDraft(JSON.stringify({version:2,text:'空へ',result:corrupt,dictionary:[]}))).toThrow();
+  });
+  it('rejects missing source coverage and unsupported versions', () => {
+    const corrupt={...result,lines:[{...line,segments:line.segments.slice(1)}]};
+    expect(() => parseDraft(JSON.stringify({version:2,text:'空へ',result:corrupt,dictionary:[]}))).toThrow();
+    expect(() => parseDraft('{"version":99}')).toThrow();
   });
 });
