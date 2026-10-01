@@ -1,7 +1,7 @@
 """Deterministic kana -> Hangul, using the Vocaro lyrics notation profile."""
 import unicodedata
 
-RULE_VERSION = "vocaro-2026-10-02.1"
+RULE_VERSION = "vocaro-2026-10-02.2"
 ROWS = [
     ("あいうえお", "아 이 우 에 오"), ("かきくけこ", "카 키 쿠 케 코"),
     ("さしすせそ", "사 시 스 세 소"), ("たちつてと", "타 치 츠 테 토"),
@@ -70,8 +70,9 @@ def transliterate(reading: str) -> tuple[str, list[str]]:
         c = text[i]
         if c == "ん":
             if not _coda(out, 4):
-                out.append("ん")
-                warnings.append("단독 ん의 발음을 확인해 주세요.")
+                # A morphological token may start with ん (痛い / ん / だ).
+                # Keep the recognized Korean nasal for the line composer.
+                out.append("ㄴ")
             previous_vowel = ""
         elif c == "っ":
             if i and text[i - 1] != "ん" and i + 1 < len(text) and text[i + 1] in SOKUON_NEXT:

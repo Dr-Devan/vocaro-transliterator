@@ -8,6 +8,16 @@ const line: Line = {id:'line-0',source:'空へ',segments:[
 const result: Result = {lines:[line],ruleVersion:'v1',analyzerVersion:'1',dictionaryVersion:'1',offsetUnit:'unicode-code-point'};
 describe('editing and export', () => {
   it('attaches particles', () => expect(lineOutput(line)).toBe('소라에'));
+  it('composes a split ん into ㄴ without assimilating to ㅇ or ㅁ', () => {
+    const base = line.segments[0];
+    const word = {...base,surface:'痛い',hangul:'이타이'};
+    const nasal = {...base,surface:'ん',hangul:'ㄴ',attach:true};
+    const end = {...base,surface:'だ',hangul:'다',attach:true};
+    expect(lineOutput({...line,segments:[word,nasal,end]})).toBe('이타인다');
+    expect(lineOutput({...line,segments:[{...word,hangul:'시'},nasal,{...end,hangul:'파이'}]})).toBe('신파이');
+    expect(lineOutput({...line,segments:[word,{...base,kind:'separator',surface:' ',hangul:' '},nasal,end]})).toBe('이타이 ㄴ다');
+    expect(lineOutput({...line,segments:[nasal]})).toBe('ㄴ');
+  });
   it('keeps blank lines and original source', () => {
     const data = {...result,lines:[line,{id:'line-1',source:'',segments:[]},line]};
     expect(exportText(data,'paired')).toBe('空へ\n소라에\n\n空へ\n소라에');

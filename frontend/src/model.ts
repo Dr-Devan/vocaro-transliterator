@@ -3,6 +3,7 @@ export type Segment = {
   kind: 'word' | 'separator'; attach: boolean; warnings: string[];
   customReading?: string; customHangul?: string; reviewed?: boolean;
   origin?: 'dictionary' | 'manual';
+  candidates?: {reading:string; hangul:string}[];
 };
 export type Line = { id: string; source: string; segments: Segment[]; customOutput?: string; translation?: string };
 export type DictionaryEntry = { surface: string; reading: string };
@@ -14,8 +15,17 @@ export function lineOutput(line: Line): string {
   let output = '';
   for (const s of line.segments) {
     if (s.kind === 'separator') { output += ' '; continue; }
-    if (output && !output.endsWith(' ') && !s.attach) output += ' ';
-    output += s.customHangul ?? s.hangul;
+    let value = s.customHangul ?? s.hangul;
+    // ん always maps to ㄴ, including when the analyzer splits it off.
+    // Compose across contiguous tokens, but never across an explicit space.
+    if (value.startsWith('ㄴ') && output && !output.endsWith(' ')) {
+      const last = output.charCodeAt(output.length - 1);
+      if (last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 === 0) {
+        output = output.slice(0,-1) + String.fromCharCode(last + 4);
+        value = value.slice(1);
+      }
+    } else if (output && !output.endsWith(' ') && !s.attach) output += ' ';
+    output += value;
   }
   return output.trim().replace(/ +/g, ' ');
 }
@@ -62,6 +72,6 @@ export function applyRange(result: Result, line: number, first: number, last: nu
   const row = result.lines[line];
   const head = row.segments[first], tail = row.segments[last];
   const merged: Segment = {...head, end:tail.end, surface:Array.from(row.source).slice(head.start,tail.end).join(''),
-    customReading:reading, customHangul:hangul, reviewed:true, origin:'manual'};
+    customReading:reading, customHangul:hangul, reviewed:true, origin:'manual', candidates:first === last ? head.candidates : undefined};
   return {...result, lines:result.lines.map((l,i) => i !== line ? l : {...l, segments:[...l.segments.slice(0,first), merged, ...l.segments.slice(last+1)]})};
 }

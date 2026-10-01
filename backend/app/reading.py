@@ -2,6 +2,7 @@
 from importlib.metadata import version
 from threading import Lock
 from bisect import bisect_left, bisect_right
+from functools import lru_cache
 import unicodedata
 from sudachipy import dictionary, tokenizer
 from .transliteration import hiragana, is_kana, transliterate, RULE_VERSION
@@ -12,6 +13,22 @@ class Reader:
         self.dictionary = dictionary.Dictionary(dict="core")
         self.tokenizer = self.dictionary.create()
         self.lock = Lock()
+
+    @lru_cache(maxsize=2048)
+    def candidate_readings(self, surface, pos):
+        # Exact surface and contextual major POS avoid unrelated readings such as
+        # the noun シ for the pronoun 私. Kana spelling itself is not ambiguous.
+        if is_kana(surface):
+            return ()
+        return tuple(dict.fromkeys(hiragana(m.reading_form()) for m in self.dictionary.lookup(surface)
+                                   if (not pos or m.part_of_speech()[0] == pos) and is_kana(m.reading_form())))
+
+    def add_candidates(self, segment, pos=""):
+        readings = self.candidate_readings(segment["surface"], pos)
+        current = segment.get("customReading") or segment["reading"]
+        choices = list(dict.fromkeys(([current] if current else []) + list(readings)))
+        segment["candidates"] = [dict(reading=r, hangul=transliterate(r)[0]) for r in choices if r]
+        return segment
 
     def analyze(self, text: str, entries=(), overrides=()) -> dict:
         lines = []
@@ -49,6 +66,7 @@ class Reader:
                         segment = dict(start=start, end=stop, surface=surface, reading=reading,
                                        hangul=hangul, kind="word", attach=pos[0] in ("助詞", "助動詞", "接尾辞"),
                                        warnings=reasons)
+                        self.add_candidates(segment, pos[0])
                     segments.append(segment)
                     end = stop
                 if end < len(source):
@@ -97,6 +115,11 @@ class Reader:
                         warnings=notes, reviewed=not notes)
             if span["origin"] == "manual":
                 item.update(customReading=span["reading"], customHangul=span["hangul"])
+            if original and original["surface"] == span["surface"]:
+                choices = original.get("candidates", [])
+                item["candidates"] = [dict(reading=span["reading"], hangul=span["hangul"])] + [c for c in choices if c["reading"] != span["reading"]]
+            else:
+                self.add_candidates(item)
             output.append(item)
             cursor = span["end"]
         output.extend(self.fragment(source, segments[bisect_right(ends,cursor):], cursor, len(source)))
@@ -122,10 +145,10 @@ class Reader:
                 reading = hiragana(part) if is_kana(part) else hiragana(piece.reading_form())
                 notes = ["사전 적용으로 나뉜 구간입니다. 읽기를 확인해 주세요."]
                 hangul, warnings = transliterate(reading) if is_kana(reading) else (part, [])
-                output.append(dict(start=left + piece.begin(), end=left + piece.end(), surface=part,
+                output.append(self.add_candidates(dict(start=left + piece.begin(), end=left + piece.end(), surface=part,
                                    reading=reading if is_kana(reading) else "", hangul=hangul,
                                    kind="word", attach=piece.part_of_speech()[0] in ("助詞", "助動詞", "接尾辞"),
-                                   warnings=notes + warnings))
+                                   warnings=notes + warnings), piece.part_of_speech()[0]))
         return output
 
     @staticmethod

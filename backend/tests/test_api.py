@@ -47,3 +47,20 @@ def test_limits(client):
 def test_kana_orthography(client):
     data = client.post("/api/analyze", json={"text": "せいめい"}).json()
     assert "".join(s["hangul"] for s in data["lines"][0]["segments"]) == "세이메이"
+
+
+def test_split_nasal_is_recognized(client):
+    data = client.post("/api/analyze", json={"text": "痛いんだ"}).json()
+    parts = data["lines"][0]["segments"]
+    assert [p["surface"] for p in parts] == ["痛い", "ん", "だ"]
+    assert [p["hangul"] for p in parts] == ["이타이", "ㄴ", "다"]
+    assert not any(p["warnings"] for p in parts)
+
+
+def test_candidates_from_dictionary_with_context(client):
+    data = client.post("/api/analyze", json={"text": "私と明日と今日"}).json()
+    tokens = {p["surface"]: p for p in data["lines"][0]["segments"]}
+    assert {c["reading"] for c in tokens["私"]["candidates"]} == {"わたし", "わたくし", "あたし"}
+    assert {c["reading"] for c in tokens["明日"]["candidates"]} >= {"あす", "あした"}
+    assert {c["reading"] for c in tokens["今日"]["candidates"]} >= {"きょう", "こんにち"}
+    assert len(tokens["私"]["candidates"]) == len({c["reading"] for c in tokens["私"]["candidates"]})

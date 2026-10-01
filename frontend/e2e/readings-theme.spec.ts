@@ -1,0 +1,58 @@
+import { test, expect } from '@playwright/test';
+
+test('split nasal and dictionary reading candidates work through editing and reload', async ({page,context}) => {
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  await page.goto('/');
+  await page.getByLabel('일본어 가사',{exact:true}).fill('痛いんだ\n私は明日へ\nお母さん');
+  await page.getByRole('button',{name:'발음 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('이타인다');
+  await expect(page.getByLabel('3행 한글 발음')).toHaveValue('오카아산');
+  await expect(page.getByText('1곳 확인 필요')).toHaveCount(0);
+  await page.getByRole('button',{name:'私',exact:true}).click();
+  await expect(page.getByRole('group',{name:'읽기 후보'})).toBeVisible();
+  await page.getByRole('button',{name:'わたし 와타시',exact:true}).click();
+  await expect(page.locator('#reading')).toHaveValue('わたし');
+  await expect(page.locator('#hangul')).toHaveValue('와타시');
+  await page.getByRole('button',{name:'수정 적용'}).click();
+  await page.getByRole('button',{name:'明日',exact:true}).click();
+  await page.getByRole('button',{name:'あした 아시타',exact:true}).click();
+  await page.getByRole('button',{name:'수정 적용'}).click();
+  await expect(page.getByLabel('2행 한글 발음')).toHaveValue('와타시와 아시타에');
+  await page.getByRole('button',{name:'다시 변환'}).click();
+  await expect(page.getByLabel('2행 한글 발음')).toHaveValue('와타시와 아시타에');
+  await page.getByRole('button',{name:'복사하기'}).click();
+  await expect.poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g,'\n')).toContain('痛いんだ\n이타인다');
+  await page.reload();
+  await expect(page.getByLabel('2행 한글 발음')).toHaveValue('와타시와 아시타에');
+});
+
+test('system, dark and light themes persist without marketing slogans', async ({page}) => {
+  await page.emulateMedia({colorScheme:'dark'});
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  await expect(page.getByText('가사에 발음을 붙이다',{exact:false})).toHaveCount(0);
+  await expect(page.getByText('읽기 쉬운 가사의 시작')).toHaveCount(0);
+  await page.getByLabel('화면 테마').selectOption('light');
+  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await page.reload();
+  await expect(page.getByLabel('화면 테마')).toHaveValue('light');
+  await page.getByLabel('화면 테마').selectOption('dark');
+  await page.getByLabel('일본어 가사',{exact:true}).fill('痛いんだ\n私は明日へ');
+  await page.getByRole('button',{name:'발음 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue('이타인다');
+  await page.screenshot({path:'test-results/dark.png',fullPage:true});
+  await page.getByRole('button',{name:'私',exact:true}).click();
+  await expect(page.getByRole('dialog')).toHaveCSS('background-color','rgb(30, 40, 35)');
+  await page.screenshot({path:'test-results/dark-candidates.png',fullPage:true});
+  await page.getByRole('button',{name:'닫기',exact:true}).click();
+  await page.getByLabel('화면 테마').selectOption('light');
+  await page.screenshot({path:'test-results/light.png',fullPage:true});
+  await page.getByLabel('화면 테마').selectOption('system');
+  await page.emulateMedia({colorScheme:'light'});
+  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await page.emulateMedia({colorScheme:'dark'});
+  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path:'test-results/dark-mobile.png',fullPage:true});
+});

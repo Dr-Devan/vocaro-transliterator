@@ -11,7 +11,8 @@ function segment(v: unknown, points: string[]): v is Segment {
     str(v.reading,20000) && str(v.hangul,20000) && ['word','separator'].includes(v.kind as string) && typeof v.attach === 'boolean' &&
     Array.isArray(v.warnings) && v.warnings.length < 30 && v.warnings.every(s => str(s,2000)) &&
     optional(v.customReading,1000) && optional(v.customHangul,2000) && (v.reviewed === undefined || typeof v.reviewed === 'boolean') &&
-    (v.origin === undefined || ['manual','dictionary'].includes(v.origin as string));
+    (v.origin === undefined || ['manual','dictionary'].includes(v.origin as string)) &&
+    (v.candidates === undefined || Array.isArray(v.candidates) && v.candidates.length <= 200 && v.candidates.every(c => record(c) && str(c.reading,20000) && str(c.hangul,20000)));
 }
 function line(v: unknown): v is Line {
   if (!record(v) || !str(v.id,100) || !str(v.source) || !Array.isArray(v.segments) || v.segments.length > 20000 ||

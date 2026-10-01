@@ -63,5 +63,5 @@ def test_maximum_lines_and_repeated_dictionary_matches(client):
 
 
 def test_unknown_dictionary_kana_is_still_flagged(client):
-    data = client.post("/api/analyze", json={"text": "宇宙", "dictionary": [{"surface": "宇宙", "reading": "ん"}]}).json()
+    data = client.post("/api/analyze", json={"text": "宇宙", "dictionary": [{"surface": "宇宙", "reading": "ゖ"}]}).json()
     assert data["lines"][0]["segments"][0]["warnings"]
