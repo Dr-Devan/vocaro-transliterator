@@ -21,23 +21,30 @@ test('split nasal and dictionary reading candidates work through editing and rel
   await page.getByRole('button',{name:'발음 변환'}).click();
   await expect(page.getByLabel('1행 한글 발음')).toHaveValue('이타인다');
   await expect(page.getByLabel('3행 한글 발음')).toHaveValue('오카아산');
-  await expect(page.getByText('1곳 확인 필요')).toHaveCount(0);
+  await expect(page.getByText('2곳 확인 필요',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'私',exact:true})).toHaveClass(/needs-review/);
+  await expect(page.getByRole('button',{name:'明日',exact:true})).toHaveClass(/needs-review/);
   await page.getByRole('button',{name:'私',exact:true}).click();
   await expect(page.getByRole('group',{name:'읽기 후보'})).toBeVisible();
+  await expect(page.getByText('읽기 후보가 여러 개입니다.',{exact:false})).toBeVisible();
   await page.getByRole('button',{name:'わたし 와타시',exact:true}).click();
   await expect(page.locator('#reading')).toHaveValue('わたし');
   await expect(page.locator('#hangul')).toHaveValue('와타시');
   await page.getByRole('button',{name:'수정 적용'}).click();
+  await expect(page.getByText('1곳 확인 필요',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'明日',exact:true}).click();
   await page.getByRole('button',{name:'あした 아시타',exact:true}).click();
   await page.getByRole('button',{name:'수정 적용'}).click();
   await expect(page.getByLabel('2행 한글 발음')).toHaveValue('와타시와 아시타에');
+  await expect(page.locator('.badge')).toHaveText('변환 완료');
   await page.getByRole('button',{name:'다시 변환'}).click();
   await expect(page.getByLabel('2행 한글 발음')).toHaveValue('와타시와 아시타에');
+  await expect(page.locator('.badge')).toHaveText('변환 완료');
   await page.getByRole('button',{name:'복사하기'}).click();
   await expect.poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g,'\n')).toContain('痛いんだ\n이타인다');
   await page.reload();
   await expect(page.getByLabel('2행 한글 발음')).toHaveValue('와타시와 아시타에');
+  await expect(page.locator('.badge')).toHaveText('변환 완료');
 });
 
 test('system, dark and light themes persist without marketing slogans', async ({page}) => {

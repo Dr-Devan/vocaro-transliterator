@@ -71,7 +71,11 @@ export function mergeResult(next: Result, old: Result | null): Result {
 export function hasEdits(line: Line): boolean {
   return line.customOutput !== undefined || !!line.translation || line.segments.some(s => s.customHangul !== undefined);
 }
-export const pending = (s: Segment) => s.kind === 'word' && s.warnings.length > 0 && !s.reviewed;
+export function reviewReasons(s: Segment): string[] {
+  const ambiguous = new Set(s.candidates?.map(c => c.reading).filter(Boolean)).size > 1;
+  return [...s.warnings, ...(ambiguous ? ['읽기 후보가 여러 개입니다. 곡에 맞는 발음을 선택하고 수정 적용을 눌러 주세요.'] : [])];
+}
+export const pending = (s: Segment) => s.kind === 'word' && !s.reviewed && reviewReasons(s).length > 0;
 
 export const dictionarySignature = (entries: DictionaryEntry[]) => JSON.stringify([...entries].sort((a,b) => a.surface.localeCompare(b.surface)));
 export function collectOverrides(result: Result | null, text: string) {
