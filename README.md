@@ -84,6 +84,8 @@ docker run --rm -p 8000:8000 vocaro-transliterator
 
 ## 출처
 
+아이콘: [Google Material Symbols Rounded](https://developers.google.com/fonts/docs/material_symbols), Apache 2.0. 사용하는 SVG만 앱에 포함하며 [라이선스](frontend/public/material-symbols-LICENSE.txt)를 함께 배포합니다. 아이콘 버튼에는 기능 이름과 툴팁을 제공하고 모바일 터치 영역은 44px로 유지합니다.
+
 표기 기준: [보카로 가사 위키 일본어 표기법](https://vocaro.wikidot.com/guide:ja-ko-notation), [곡 작성 안내](https://vocaro.wikidot.com/guide:song-page), 확인일 2026-10-02.
 
 형태소 분석: [SudachiPy / Sudachi.rs](https://github.com/WorksApplications/sudachi.rs), 사전: [SudachiDict](https://github.com/WorksApplications/SudachiDict). 해당 프로젝트의 라이선스를 따릅니다. 위키 표기 문서는 일부 기여 내용에 별도 라이선스를 명시하므로 문서·표의 재배포 조건을 구분해야 합니다. 이 저장소는 위키 문서 전문을 포함하지 않습니다.
