@@ -1,7 +1,7 @@
 """Deterministic kana -> Hangul, using the Vocaro lyrics notation profile."""
 import unicodedata
 
-RULE_VERSION = "vocaro-2026-10-02.2"
+RULE_VERSION = "vocaro-2026-10-02.3"
 ROWS = [
     ("あいうえお", "아 이 우 에 오"), ("かきくけこ", "카 키 쿠 케 코"),
     ("さしすせそ", "사 시 스 세 소"), ("たちつてと", "타 치 츠 테 토"),
@@ -60,7 +60,7 @@ def _coda(out: list[str], coda: int) -> bool:
     return False
 
 
-def transliterate(reading: str) -> tuple[str, list[str]]:
+def transliterate(reading: str, next_reading: str = "") -> tuple[str, list[str]]:
     text = hiragana(reading)
     out: list[str] = []
     warnings: list[str] = []
@@ -75,7 +75,8 @@ def transliterate(reading: str) -> tuple[str, list[str]]:
                 out.append("ㄴ")
             previous_vowel = ""
         elif c == "っ":
-            if i and text[i - 1] != "ん" and i + 1 < len(text) and text[i + 1] in SOKUON_NEXT:
+            following = text[i + 1:i + 2] or hiragana(next_reading)[:1]
+            if i and text[i - 1] != "ん" and following in SOKUON_NEXT:
                 _coda(out, 19)
             previous_vowel = ""
         elif c == "ー" or (previous_vowel and (c == previous_vowel or previous_vowel == "お" and c == "う" or SMALL.get(c) == previous_vowel)):

@@ -8,6 +8,15 @@ const line: Line = {id:'line-0',source:'空へ',segments:[
 const result: Result = {lines:[line],ruleVersion:'v1',analyzerVersion:'1',dictionaryVersion:'1',offsetUnit:'unicode-code-point'};
 describe('editing and export', () => {
   it('attaches particles', () => expect(lineOutput(line)).toBe('소라에'));
+  it('composes sokuon across contiguous tokens while respecting edits and spaces', () => {
+    const stem = {...line.segments[0],surface:'君',reading:'きみ',hangul:'키미'};
+    const suffix = {...line.segments[1],surface:'って',reading:'って',hangul:'테'};
+    expect(lineOutput({...line,segments:[stem,suffix]})).toBe('키밋테');
+    expect(lineOutput({...line,segments:[{...stem,customHangul:'키미'},suffix]})).toBe('키미테');
+    expect(lineOutput({...line,segments:[suffix]})).toBe('테');
+    expect(lineOutput({...line,segments:[{...stem,reading:'ん',hangul:'ㄴ'},suffix]})).toBe('ㄴ테');
+    expect(lineOutput({...line,segments:[stem,{...suffix,kind:'separator'},suffix]})).toBe('키미 테');
+  });
   it('composes a split ん into ㄴ without assimilating to ㅇ or ㅁ', () => {
     const base = line.segments[0];
     const word = {...base,surface:'痛い',hangul:'이타이'};

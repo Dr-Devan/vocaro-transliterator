@@ -13,9 +13,24 @@ export const normalize = (s: string) => s.replace(/\r\n?/g, '\n');
 export function lineOutput(line: Line): string {
   if (line.customOutput !== undefined) return line.customOutput;
   let output = '';
-  for (const s of line.segments) {
+  for (const [index, s] of line.segments.entries()) {
     if (s.kind === 'separator') { output += ' '; continue; }
     let value = s.customHangul ?? s.hangul;
+    const prior = line.segments[index - 1];
+    const kana = (text: string) => text.normalize('NFKC').replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+    const reading = kana(s.customReading ?? s.reading);
+    const previous = prior ? kana(prior.customReading ?? prior.reading) : '';
+    const onset = reading.startsWith('っ') ? reading[1] : reading[0];
+    const splitSokuon = prior?.kind === 'word' && prior.end === s.start &&
+      (previous.endsWith('っ') || reading.startsWith('っ')) &&
+      'かきくけこさしすせそたちつてとぱぴぷぺぽ'.includes(onset || '\0') &&
+      prior.customHangul === undefined && (!reading.startsWith('っ') || s.customHangul === undefined);
+    if (splitSokuon && output && !output.endsWith(' ')) {
+      const last = output.charCodeAt(output.length - 1);
+      if (last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 === 0) {
+        output = output.slice(0,-1) + String.fromCharCode(last + 19);
+      }
+    }
     // ん always maps to ㄴ, including when the analyzer splits it off.
     // Compose across contiguous tokens, but never across an explicit space.
     if (value.startsWith('ㄴ') && output && !output.endsWith(' ')) {

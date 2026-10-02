@@ -1,5 +1,19 @@
 import { test, expect } from '@playwright/test';
 
+test('sokuon survives morphological boundaries and exports', async ({page,context}) => {
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  await page.goto('/');
+  await page.getByLabel('일본어 가사',{exact:true}).fill('待って\n言った\n君って\nあっという間\nって\nあっ\n待っ て');
+  await page.getByRole('button',{name:'발음 변환'}).click();
+  for (const [index, value] of ['맛테','잇타','키밋테','앗토 이우 마','테','아','마 테'].entries()) {
+    await expect(page.getByLabel(`${index + 1}행 한글 발음`)).toHaveValue(value);
+  }
+  await page.getByRole('button',{name:'복사하기'}).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('맛테');
+  await page.reload();
+  await expect(page.getByLabel('3행 한글 발음')).toHaveValue('키밋테');
+});
+
 test('split nasal and dictionary reading candidates work through editing and reload', async ({page,context}) => {
   await context.grantPermissions(['clipboard-read','clipboard-write']);
   await page.goto('/');

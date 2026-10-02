@@ -30,3 +30,11 @@ def test_unknown_is_visible():
 
 def test_lone_long_mark_is_reviewable():
     assert transliterate("ー")[1]
+
+
+def test_sokuon_uses_next_token_without_crossing_an_explicit_separator():
+    assert transliterate("まっ", "て")[0] == "맛"
+    assert transliterate("いっ", "た")[0] == "잇"
+    assert transliterate("あっ", "が")[0] == "아"
+    assert transliterate("あっ")[0] == "아"
+    assert transliterate("んっ", "か")[0] == "ㄴ"

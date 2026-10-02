@@ -97,6 +97,14 @@ class Reader:
                         cursor += 1
                 if spans:
                     segments = self.overlay(source, segments, spans)
+                # Inflected stems such as 待っ / て need the next token's onset.
+                # Explicit Hangul edits remain authoritative.
+                for current, following in zip(segments, segments[1:]):
+                    if (current["kind"] == following["kind"] == "word"
+                            and current["end"] == following["start"]
+                            and "customHangul" not in current and current["reading"].endswith("っ")):
+                        current["hangul"] = transliterate(current["reading"],
+                            following.get("customReading", following["reading"]))[0]
                 lines.append(dict(id=f"line-{line_index}", source=source, segments=segments))
         return dict(lines=lines, ruleVersion=RULE_VERSION, analyzerVersion=version("sudachipy"),
                     dictionaryVersion=version("sudachidict_core"), offsetUnit="unicode-code-point")

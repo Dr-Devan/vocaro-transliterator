@@ -39,6 +39,11 @@ def test_manual_reading(client):
     assert client.post("/api/transliterate", json={"reading": "  "}).status_code == 422
 
 
+def test_split_sokuon_and_explicit_space(client):
+    data = client.post("/api/analyze", json={"text": "待って\n言った\n待っ て\n待っ"}).json()
+    assert [line["segments"][0]["hangul"] for line in data["lines"]] == ["맛", "잇", "마", "마"]
+
+
 def test_limits(client):
     assert client.post("/api/analyze", json={"text": "あ" * 20001}).status_code == 422
     assert client.post("/api/analyze", json={"text": "あ\n" * 501}).status_code == 422
