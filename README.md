@@ -1,3 +1,5 @@
+> **AI 사용 고지:** 이 앱은 AI 코딩 도구를 활용하여 제작되었습니다.
+
 # Vocaro Transliterator
 
 일본어 가사에 [보카로 가사 위키 표기법](https://vocaro.wikidot.com/guide:ja-ko-notation)에 따른 한국어 발음을 붙이는 웹앱입니다.
