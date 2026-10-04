@@ -41,7 +41,7 @@
   min-height: 44px;
 }
 .primary .material-symbol, .secondary .material-symbol { width: 20px; height: 20px; }
-.project-toolbar { gap: 6px; }
+.project-toolbar { gap: 6px; justify-content: flex-end; }
 .project-toolbar > span { width: auto; }
 .header-actions { gap: 6px; }
 .theme-control {

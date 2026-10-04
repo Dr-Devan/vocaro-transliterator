@@ -63,7 +63,7 @@ test('system, dark and light themes persist without marketing slogans', async ({
   await expect(page.getByLabel('1행 한글 발음')).toHaveValue('이타인다');
   await page.screenshot({path:'test-results/dark.png',fullPage:true});
   await page.getByRole('button',{name:'私',exact:true}).click();
-  await expect(page.getByRole('dialog')).toHaveCSS('background-color','rgb(30, 40, 35)');
+  await expect(page.getByRole('dialog')).toHaveCSS('background-color','rgb(24, 34, 55)');
   await page.screenshot({path:'test-results/dark-candidates.png',fullPage:true});
   await page.getByRole('button',{name:'닫기',exact:true}).click();
   await page.getByLabel('화면 테마').selectOption('light');

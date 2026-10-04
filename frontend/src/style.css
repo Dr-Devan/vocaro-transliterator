@@ -1,5 +1,26 @@
-:root{font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-synthesis:none;color-scheme:light;--bg:#f6f8f5;--panel:#fff;--field:#fcfdfb;--text:#253b33;--muted:#64756b;--line:#dce4db;--soft:#edf3e9;--accent:#176b59;--accent-text:#176b59;--on-accent:#fff;--warning-bg:#fff4d9;--warning-text:#79551a;--warning-line:#e6cf9b;--error:#ab3535;--backdrop:#20362d66;color:var(--text);background:var(--bg)}
-:root[data-theme=dark]{color-scheme:dark;--bg:#151c19;--panel:#1e2823;--field:#18211c;--text:#e0e9e2;--muted:#a3b5a7;--line:#3a4c3f;--soft:#293b30;--accent:#267b61;--accent-text:#91d9b9;--on-accent:#fff;--warning-bg:#3c301c;--warning-text:#edcc86;--warning-line:#705933;--error:#ffaba5;--backdrop:#0009}
+:root {
+  --LightBlue1:hsl(220deg,100%,60%); --LightBlue2:hsl(220deg,100%,70%);
+  --LightBlue3:hsl(220deg,100%,80%); --LightBlue4:hsl(220deg,100%,85%); --LightBlue5:hsl(220deg,100%,90%);
+  --DarkBlue1:hsl(220deg,40%,40%); --DarkBlue2:hsl(220deg,40%,50%);
+  --DarkBlue3:hsl(220deg,40%,60%); --DarkBlue4:hsl(220deg,40%,65%); --DarkBlue5:hsl(220deg,40%,70%);
+  font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-synthesis:none;color-scheme:light;
+  --bg:color-mix(in srgb,var(--LightBlue5) 30%,white); --panel:#fff;
+  --field:color-mix(in srgb,var(--LightBlue5) 16%,white);
+  --text:#202c45; --muted:#596a87; --line:var(--LightBlue4); --soft:var(--LightBlue5);
+  --accent:var(--DarkBlue1); --accent-text:var(--DarkBlue1); --on-accent:#fff;
+  --warning-bg:#fff4d9;--warning-text:#79551a;--warning-line:#e6cf9b;--error:#ab3535;--backdrop:#182a4d66;
+  color:var(--text);background:var(--bg);
+}
+:root[data-theme=dark] {
+  color-scheme:dark; --bg:#101727; --panel:#182237; --field:#131d30;
+  --text:#e5ecfa; --muted:var(--DarkBlue5);
+  --line:color-mix(in srgb,var(--DarkBlue2) 55%,var(--panel));
+  --soft:color-mix(in srgb,var(--DarkBlue1) 40%,var(--panel));
+  --accent:var(--LightBlue3); --accent-text:var(--LightBlue3); --on-accent:#101727;
+  --warning-bg:#3c301c;--warning-text:#edcc86;--warning-line:#705933;--error:#ffaba5;--backdrop:#0009;
+}
+:root .mark{background:var(--LightBlue1);color:#fff}
+:root[data-theme=dark] .mark{background:var(--DarkBlue2)}
 *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button,a,input,textarea,select,summary{outline-offset:4px}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent-text)}button{cursor:pointer}button:disabled{cursor:default;opacity:.5}a{color:inherit;text-decoration:none}button:hover:not(:disabled){filter:brightness(.96)}
 .topbar{min-height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px max(32px,calc((100vw - 1240px)/2))}.brand{display:flex;gap:14px;align-items:center;font-size:18px;font-weight:700;letter-spacing:-.6px}.brand-light{font-weight:400;color:var(--muted)}.mark{position:relative;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--on-accent);width:36px;height:36px;border-radius:9px;font-size:19px}.mark span{position:absolute;right:-5px;bottom:-4px;background:var(--soft);color:var(--accent-text);border:2px solid var(--bg);border-radius:5px;font-size:12px;padding:0 3px}.header-actions{display:flex;align-items:center;gap:20px}.source-link{font-size:12px;color:var(--muted)}main{max-width:1240px;margin:auto;padding:26px 0 20px}.tool-title{font-size:20px;font-weight:600;margin:0 0 18px}
 .workspace{display:grid;grid-template-columns:1fr 1.12fr;gap:22px;margin-top:22px;align-items:stretch}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}.panel-title{height:62px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 23px}.panel-title h2{font-size:14px;margin:0;display:flex;gap:12px;align-items:center}.step{font-size:11px;letter-spacing:1px;font-weight:500;color:var(--muted)}.text-button{border:0;background:none;padding:5px 0;color:var(--accent-text);font-size:12px}
