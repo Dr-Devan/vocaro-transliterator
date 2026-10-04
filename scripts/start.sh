@@ -6,5 +6,5 @@ test -x "$ROOT/.venv/bin/python" || { echo 'Create .venv and install backend req
 cd frontend
 test -d node_modules || npm ci
 npm run build
-cd ../backend
-exec "$ROOT/.venv/bin/python" -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+cd dist
+exec "$ROOT/.venv/bin/python" -m http.server 8000 --bind 127.0.0.1

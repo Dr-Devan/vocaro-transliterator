@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { applyRange, collectOverrides, dictionarySignature, exportText, hasEdits, lineOutput, normalize, pending, reviewReasons, preserveLines, type DictionaryEntry, type ExportMode, type Result } from './model';
 import { download, parseDraft, restore, STORAGE } from './draft';
 import { useTheme } from './theme';
+import { analyzeBrowser, prepareEngine, useEngineStatus } from './browser-engine';
+import { convertReading, RULE_VERSION } from './transliteration';
+import type { AnalysisInput } from './analyzer';
 import { Icon, IconButton } from './Icon';
 import './style.css';
 import './prototype.css';
@@ -10,18 +13,16 @@ import './icons.css';
 
 const SAMPLE = '青い空を見上げた\n風は静かに歌う\n\nきっと明日は晴れる';
 async function post<T>(path: string, data: unknown): Promise<T> {
-  let res: Response;
-  try { res = await fetch(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data), signal: AbortSignal.timeout(30000)}); }
-  catch { throw new Error('변환 서버에 연결하지 못했거나 응답 시간이 초과되었습니다. 입력은 유지되며 다시 시도할 수 있습니다.'); }
-  if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(typeof body.detail === 'string' ? body.detail : '입력 길이와 형식을 확인한 뒤 다시 시도해 주세요.'); }
-  return res.json();
+  if(path === '/api/analyze') return await analyzeBrowser(data as AnalysisInput) as T;
+  return convertReading((data as {reading:string}).reading) as T;
 }
 function App() {
   const [theme,setTheme] = useTheme();
   const [initial] = useState(restore);
   const [text, setText] = useState(initial.draft.text);
   const [result, setResult] = useState<Result | null>(initial.draft.result);
-  const [serverRuleVersion, setServerRuleVersion] = useState('');
+  const engineStatus = useEngineStatus();
+  const serverRuleVersion = RULE_VERSION;
   const [dictionary, setDictionary] = useState<DictionaryEntry[]>(initial.draft.dictionary);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -48,7 +49,7 @@ function App() {
   const selectedRow = selection && result?.lines[selection.line];
   const rangeSurface = selectedRow && selected ? Array.from(selectedRow.source).slice(selected.start,selectedRow.segments[rangeEnd]?.end).join('') : '';
   const missingTranslations = result?.lines.filter(l => l.source.trim() && !l.translation?.trim()).length || 0;
-  useEffect(() => {fetch('/api/health').then(r => r.json()).then(d => setServerRuleVersion(d.ruleVersion || '')).catch(() => {});}, []);
+  useEffect(() => {prepareEngine().catch(() => {});}, []);
 
   useEffect(() => { const timer = setTimeout(() => {
     try { localStorage.setItem(STORAGE, JSON.stringify({version: 2, text, result, dictionary})); setSaved(true); }
@@ -135,16 +136,19 @@ function App() {
   }
 
   return <>
-    <header className="topbar"><a className="brand" href="/" aria-label="Vocaro Transliterator 홈"><span className="mark">ア<span>가</span></span><span>vocaro<span className="brand-light"> / transliterator</span></span></a><div className="header-actions"><div className="theme-control" title={`화면 테마: ${theme === 'system' ? '시스템 설정' : theme === 'dark' ? '다크' : '라이트'}`}><Icon name={theme === 'system' ? 'brightness_auto' : theme === 'dark' ? 'dark_mode' : 'light_mode'}/><label className="sr-only" htmlFor="theme">화면 테마</label><select id="theme" value={theme} onChange={e => setTheme(e.target.value as 'system'|'light'|'dark')}><option value="system">시스템 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></div><a aria-label="GitHub 저장소" title="GitHub 저장소" className="source-link icon-button" href="https://github.com/Dr-Devan/vocaro-transliterator" target="_blank" rel="noreferrer"><Icon name="code"/></a></div></header>
+    <header className="topbar"><a className="brand" href={import.meta.env.BASE_URL} aria-label="Vocaro Transliterator 홈"><span className="mark">ア<span>가</span></span><span>vocaro<span className="brand-light"> / transliterator</span></span></a><div className="header-actions"><div className="theme-control" title={`화면 테마: ${theme === 'system' ? '시스템 설정' : theme === 'dark' ? '다크' : '라이트'}`}><Icon name={theme === 'system' ? 'brightness_auto' : theme === 'dark' ? 'dark_mode' : 'light_mode'}/><label className="sr-only" htmlFor="theme">화면 테마</label><select id="theme" value={theme} onChange={e => setTheme(e.target.value as 'system'|'light'|'dark')}><option value="system">시스템 설정</option><option value="light">라이트</option><option value="dark">다크</option></select></div><a aria-label="GitHub 저장소" title="GitHub 저장소" className="source-link icon-button" href="https://github.com/Dr-Devan/vocaro-transliterator" target="_blank" rel="noreferrer"><Icon name="code"/></a></div></header>
     <main>
       <h1 className="tool-title">가사 발음 변환</h1>
+      <div className={`engine-status ${engineStatus.phase === 'error' ? 'notice' : ''}`} role="status" aria-live="polite">
+        {engineStatus.phase === 'ready' ? (engineStatus.saved === false ? '분석 준비 완료 · 이 기기에 사전을 저장하지 못해 다음 방문에 다시 다운로드합니다.' : '분석 준비 완료 · 발음 변환은 이 기기에서 처리됩니다.') : engineStatus.phase === 'error' ? <><span>{engineStatus.error}</span><button className="secondary" onClick={() => prepareEngine().catch(() => {})}>다시 다운로드</button></> : <><span>{engineStatus.phase === 'loading' ? '사전을 여는 중입니다.' : `분석 사전 다운로드 중 · ${((engineStatus.loaded || 0) / 1000000).toFixed(1)} / ${((engineStatus.total || 72000000) / 1000000).toFixed(1)} MB`}</span><progress aria-label="분석 사전 준비" max={engineStatus.total || 72000000} value={engineStatus.phase === 'loading' ? undefined : engineStatus.loaded || 0}/><span>처음에는 약 72MB를 받습니다. 기다리는 동안 원문 입력·프로젝트 불러오기·수동 교정을 사용할 수 있습니다.</span></>}
+      </div>
       <div className="project-toolbar"><IconButton icon="note_add" label="새 곡" disabled={busy} onClick={() => {if (!text || window.confirm('현재 작업을 비우고 새 곡을 시작할까요? 프로젝트를 저장하면 나중에 복원할 수 있습니다.')) {setText('');setResult(null);setDictionary([]);setHistory([]);setMessage('새 곡을 시작합니다.');setError('');}}} /><IconButton icon="save" label="프로젝트 저장" disabled={busy} onClick={() => download(JSON.stringify({version:2,text,result,dictionary},null,2),'vocaro-project.json','application/json')} /><IconButton icon="folder_open" label="프로젝트 불러오기" disabled={busy} onClick={() => fileInput.current?.click()} /><input ref={fileInput} type="file" accept=".json,application/json" className="sr-only" aria-label="프로젝트 파일" onChange={e => importFile(e.target.files?.[0])}/></div>
       <div className="workspace">
         <section className="panel input-panel" aria-labelledby="input-heading">
           <div className="panel-title"><h2 id="input-heading"><span className="step">01</span> 일본어 원문</h2><button className="text-button" disabled={busy} onClick={() => {if (!text || window.confirm('입력한 원문을 예제로 바꿀까요?')) setText(SAMPLE);}}>예제 넣기</button></div>
           <label className="sr-only" htmlFor="lyrics">일본어 가사</label><textarea id="lyrics" className="lyrics-input" value={text} disabled={busy} maxLength={20000} onChange={e => setText(e.target.value)} placeholder={'여기에 일본어 가사를 붙여 넣으세요.\n\n줄바꿈과 빈 줄은 그대로 유지됩니다.'} spellCheck={false}/>
           <div className="input-meta"><span>{text ? normalize(text).split('\n').length : 0}줄</span><span>{text.length.toLocaleString()} / 20,000자</span></div>
-          <div className="input-actions"><span className="local-note">{saved ? '초안은 이 브라우저에 저장됩니다' : '초안을 저장하지 못했습니다'}</span><button className="primary" disabled={busy || !text.trim()} onClick={analyze}>{busy ? '발음 생성 중…' : result ? '다시 변환' : '발음 변환'} <Icon name="arrow_forward"/></button></div>
+          <div className="input-actions"><span className="local-note">{saved ? '초안은 이 브라우저에 저장됩니다' : '초안을 저장하지 못했습니다'}</span><button className="primary" disabled={busy || !text.trim() || engineStatus.phase !== 'ready'} onClick={analyze}>{busy ? '발음 생성 중…' : result ? '다시 변환' : '발음 변환'} <Icon name="arrow_forward"/></button></div>
         </section>
         <section className="panel result-panel" aria-labelledby="result-heading">
           <div className="panel-title"><h2 id="result-heading"><span className="step">02</span> 한글 발음</h2>{result && <span className={count ? 'badge warning' : 'badge'}>{count ? `${count}곳 확인 필요` : '변환 완료'}</span>}</div>
@@ -167,7 +171,7 @@ function App() {
       <details className="dictionary-panel"><summary>곡별 읽기 사전 <span>{dictionary.length}개</span></summary><p>이 곡에서 같은 표기를 같은 읽기로 변환합니다. 긴 표현을 우선하며, 직접 수정한 위치는 유지됩니다.</p><div className="dictionary-form"><label>일본어 표기<input aria-label="사전 일본어 표기" value={dictSurface} maxLength={128} disabled={busy} onChange={e => setDictSurface(e.target.value)} placeholder="宇宙"/></label><label>가나 읽기<input aria-label="사전 가나 읽기" value={dictReading} maxLength={1000} disabled={busy} onChange={e => setDictReading(e.target.value)} placeholder="そら"/></label><button className="secondary" disabled={busy || !dictSurface || !dictReading} onClick={addDictionary}><Icon name="add"/>사전 등록</button></div><ul>{dictionary.map(entry => <li key={entry.surface}><span lang="ja">{entry.surface} → {entry.reading}</span><IconButton icon="delete" className="text-button" disabled={busy} label={`${entry.surface} 사전 삭제`} onClick={() => setDictionary(dictionary.filter(e => e.surface !== entry.surface))} /></li>)}</ul></details>
       {result && <><div className="export-options"><label><input type="checkbox" checked={translations} onChange={e => setTranslations(e.target.checked)}/> 번역 입력 칸 표시</label><IconButton icon="download" label="결과 TXT 저장" className="text-button" disabled={stale || busy} onClick={() => download(exportText(result,mode),'vocaro-lyrics.txt','text/plain;charset=utf-8')} /></div>{(mode === 'triple' || mode === 'wikidot') && missingTranslations > 0 && <div className="notice">번역 {missingTranslations}행이 비어 있는 초안입니다. 빈 번역 칸을 유지하여 출력합니다.</div>}<details className="preview"><summary>출력 미리보기</summary>{stale && <p className="error">이전 결과입니다. 원문과 사전을 다시 변환해 주세요.</p>}<textarea aria-label="출력 미리보기" readOnly value={exportText(result, mode)}/>{mode === 'wikidot' && <p>일반 텍스트를 가사 표로 출력합니다. 위키에 붙여 넣은 뒤 최종 미리보기를 확인해 주세요.</p>}</details></>}
     </main>
-    <footer><span>Vocaro Transliterator</span><a href="https://vocaro.wikidot.com/guide:ja-ko-notation" target="_blank" rel="noreferrer">표기 기준 보기 ↗</a><span className="privacy">변환 시 원문이 서버로 전송됩니다. 서버에 가사를 저장하지 않습니다.</span></footer>
+    <footer><span>Vocaro Transliterator</span><a href="https://vocaro.wikidot.com/guide:ja-ko-notation" target="_blank" rel="noreferrer">표기 기준 보기 ↗</a><span className="privacy">가사는 서버로 전송하지 않습니다. 분석 사전과 초안은 이 브라우저에 저장됩니다.</span></footer>
     <dialog ref={dialog} onCancel={e => {if (editBusy) e.preventDefault(); else setSelection(null);}} onClose={() => setSelection(null)} aria-labelledby="edit-title">
       <div className="dialog-header"><h2 id="edit-title">읽기 수정 <span lang="ja">{rangeSurface}</span></h2><IconButton icon="close" label="닫기"  disabled={editBusy} onClick={() => setSelection(null)} /></div>
       {selected && pending(selected) && <div className="notice">{reviewReasons(selected).join(' ')}</div>}

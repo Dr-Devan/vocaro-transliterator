@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 test('convert, edit, reanalyze, restore, and export', async ({page, context}) => {
   await context.grantPermissions(['clipboard-read','clipboard-write']);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByLabel('일본어 가사', {exact:true}).fill('空へ\n\n君は歌う');
   await page.getByRole('button',{name:'발음 변환'}).click();
   await expect(page.getByLabel('1행 한글 발음')).toHaveValue('소라에');
@@ -25,13 +25,13 @@ test('convert, edit, reanalyze, restore, and export', async ({page, context}) =>
 });
 test('mobile has no horizontal overflow', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
-  await page.goto('/');
+  await page.goto('./');
   await expect(page.getByRole('heading',{level:1})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path:'test-results/mobile.png',fullPage:true});
 });
 test('line overrides lock token editing until restored', async ({page}) => {
-  await page.goto('/');
+  await page.goto('./');
   await page.getByLabel('일본어 가사',{exact:true}).fill('空へ');
   await page.getByRole('button',{name:'발음 변환'}).click();
   await expect(page.getByLabel('1행 한글 발음')).toHaveValue('소라에');

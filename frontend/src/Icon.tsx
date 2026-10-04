@@ -4,7 +4,7 @@ export type SymbolName = 'note_add' | 'save' | 'folder_open' | 'undo' | 'content
 
 // Official Material Symbols Rounded, bundled locally as an SVG sprite.
 export function Icon({name}: {name: SymbolName}) {
-  return <svg className="material-symbol" width="24" height="24" aria-hidden="true" focusable="false"><use href={`/material-symbols.svg#${name}`}/></svg>;
+  return <svg className="material-symbol" width="24" height="24" aria-hidden="true" focusable="false"><use href={`${import.meta.env.BASE_URL}material-symbols.svg#${name}`}/></svg>;
 }
 
 export function IconButton({icon, label, className = '', ...props}: ButtonHTMLAttributes<HTMLButtonElement> & {icon: SymbolName; label: string}) {

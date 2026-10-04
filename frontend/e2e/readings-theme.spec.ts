@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('sokuon survives morphological boundaries and exports', async ({page,context}) => {
   await context.grantPermissions(['clipboard-read','clipboard-write']);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByLabel('일본어 가사',{exact:true}).fill('待って\n言った\n君って\nあっという間\nって\nあっ\n待っ て');
   await page.getByRole('button',{name:'발음 변환'}).click();
   for (const [index, value] of ['맛테','잇타','키밋테','앗토 이우 마','테','아','마 테'].entries()) {
@@ -16,7 +16,7 @@ test('sokuon survives morphological boundaries and exports', async ({page,contex
 
 test('split nasal and dictionary reading candidates work through editing and reload', async ({page,context}) => {
   await context.grantPermissions(['clipboard-read','clipboard-write']);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByLabel('일본어 가사',{exact:true}).fill('痛いんだ\n私は明日へ\nお母さん');
   await page.getByRole('button',{name:'발음 변환'}).click();
   await expect(page.getByLabel('1행 한글 발음')).toHaveValue('이타인다');
@@ -49,7 +49,7 @@ test('split nasal and dictionary reading candidates work through editing and rel
 
 test('system, dark and light themes persist without marketing slogans', async ({page}) => {
   await page.emulateMedia({colorScheme:'dark'});
-  await page.goto('/');
+  await page.goto('./');
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
   await expect(page.getByText('가사에 발음을 붙이다',{exact:false})).toHaveCount(0);
   await expect(page.getByText('읽기 쉬운 가사의 시작')).toHaveCount(0);

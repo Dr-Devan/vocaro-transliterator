@@ -8,8 +8,8 @@ try {
     & npm.cmd run build
     if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed' }
 } finally { Pop-Location }
-Push-Location (Join-Path $projectRoot 'backend')
+Push-Location (Join-Path $projectRoot 'frontend/dist')
 try {
     Write-Host 'Open http://127.0.0.1:8000 — Ctrl+C to stop'
-    & $pythonPath -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+    & $pythonPath -m http.server 8000 --bind 127.0.0.1
 } finally { Pop-Location }

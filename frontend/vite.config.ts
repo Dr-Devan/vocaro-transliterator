@@ -1,7 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-export default defineConfig({
+export default defineConfig(({mode}) => ({
   plugins: [react()],
-  server: { proxy: { '/api': 'http://127.0.0.1:8000' } },
+  base: loadEnv(mode, '.', 'VITE_').VITE_BASE_PATH || '/',
   test: { include: ['src/**/*.test.ts'] },
-});
+}));

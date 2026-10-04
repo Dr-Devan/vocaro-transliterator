@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('song dictionary, range edit, translation, project round trip and wiki export', async ({page,context}) => {
   await context.grantPermissions(['clipboard-read','clipboard-write']);
-  await page.goto('/');
+  await page.goto('./');
   await page.getByLabel('일본어 가사',{exact:true}).fill('青い空へ\n\n宇宙へ\n宇宙を');
   await page.getByRole('button',{name:'발음 변환'}).click();
   await expect(page.getByLabel('1행 한글 발음')).toHaveValue('아오이 소라에');
@@ -53,7 +53,7 @@ test('song dictionary, range edit, translation, project round trip and wiki expo
 });
 
 test('apply to all adds a dictionary entry without replacing explicit edits', async ({page}) => {
-  await page.goto('/');
+  await page.goto('./');
   await page.getByLabel('일본어 가사',{exact:true}).fill('宇宙へ\n宇宙へ');
   await page.getByRole('button',{name:'발음 변환'}).click();
   await page.getByRole('button',{name:'宇宙',exact:true}).first().click();
@@ -72,27 +72,27 @@ test('apply to all adds a dictionary entry without replacing explicit edits', as
   await expect(page.getByLabel('2행 한글 발음')).toHaveValue('소라에');
 });
 
-test('server error preserves input and allows retry', async ({page}) => {
-  await page.goto('/');
-  await page.route('**/api/analyze',route => route.abort(),{times:1});
+test('dictionary download failure preserves input and allows retry', async ({page}) => {
+  await page.route('**/dictionary/*.gz',route => route.abort(),{times:1});
+  await page.goto('./');
   await page.getByLabel('일본어 가사',{exact:true}).fill('空へ');
-  await page.getByRole('button',{name:'발음 변환'}).click();
-  await expect(page.getByRole('alert')).toContainText('서버에 연결하지 못');
+  await expect(page.getByRole('button',{name:'다시 다운로드'})).toBeVisible();
   await expect(page.getByLabel('일본어 가사',{exact:true})).toHaveValue('空へ');
+  await page.getByRole('button',{name:'다시 다운로드'}).click();
   await page.getByRole('button',{name:'발음 변환'}).click();
   await expect(page.getByLabel('1행 한글 발음')).toHaveValue('소라에');
 });
 
 test('corrupt local data does not crash the app', async ({page}) => {
   await page.addInitScript(() => localStorage.setItem('vocaro-draft-v1','{"version":2,"text":"broken","result":{"lines":[{}]}}'));
-  await page.goto('/');
+  await page.goto('./');
   await expect(page.getByRole('alert')).toContainText('저장된 초안을 읽지 못');
   await expect(page.getByLabel('일본어 가사',{exact:true})).toBeVisible();
 });
 
 test('mobile range editor and translated result fit viewport', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
-  await page.goto('/');
+  await page.goto('./');
   await page.getByLabel('일본어 가사',{exact:true}).fill('青い空へ');
   await page.getByRole('button',{name:'발음 변환'}).click();
   await page.getByRole('button',{name:'青い',exact:true}).click();

@@ -1,9 +1,15 @@
-name: Checks
-on: [push, pull_request]
+name: Checks and Pages
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,33 +23,58 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
       - run: pip install -r backend/requirements-dev.txt
       - run: python -m pytest backend/tests -q
         env:
           PYTHONPATH: backend
+      - run: cargo build --release --locked --target wasm32-unknown-unknown
+        working-directory: wasm
+      - name: Generate browser engine and dictionary
+        run: |
+          curl -fL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-unknown-linux-musl.tar.gz -o /tmp/bindgen.tar.gz
+          tar -xzf /tmp/bindgen.tar.gz -C /tmp
+          /tmp/wasm-bindgen-0.2.129-x86_64-unknown-linux-musl/wasm-bindgen wasm/target/wasm32-unknown-unknown/release/vocaro_sudachi.wasm --target web --out-dir frontend/public/engine --out-name vocaro_sudachi
+          python scripts/prepare-browser.py
       - run: npm ci
         working-directory: frontend
       - run: npm test && npm run build
         working-directory: frontend
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: |
-          PYTHONPATH=backend uvicorn app.main:app --host 127.0.0.1 --port 8000 &
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/health && break; sleep 1; done
+      - name: Test static site at its Pages subdirectory
+        run: |
+          mkdir -p /tmp/vocaro-site
+          cp -r frontend/dist /tmp/vocaro-site/${{ github.event.repository.name }}
+          python -m http.server 8000 --bind 127.0.0.1 --directory /tmp/vocaro-site &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/${{ github.event.repository.name }}/ -o /dev/null && break; sleep 1; done
           cd frontend
-          PLAYWRIGHT_BASE_URL=http://127.0.0.1:8000 npm run test:e2e
+          npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000/${{ github.event.repository.name }}/
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-results
           path: frontend/test-results
-  container:
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t vocaro-transliterator .
-      - run: |
-          docker run -d --name vocaro -p 8000:8000 vocaro-transliterator
-          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/health && break; sleep 1; done
-          curl -fsS http://127.0.0.1:8000/ | grep -q 'Vocaro Transliterator'
-          curl -fsS http://127.0.0.1:8000/api/analyze -H 'Content-Type: application/json' -d '{"text":"空へ"}'
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deployment
