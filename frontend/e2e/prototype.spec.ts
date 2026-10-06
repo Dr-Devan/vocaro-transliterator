@@ -32,6 +32,11 @@ test('song dictionary, range edit, translation, project round trip and wiki expo
   await page.getByLabel('4행 번역').fill('우주를');
   await page.getByRole('button',{name:'복사하기'}).click();
   await expect.poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g,'\n')).toContain('|| 青い空へ ||\n|| 세카이에 ||\n|| 푸른 하늘로 ||');
+  const wiki=(await page.evaluate(()=>navigator.clipboard.readText())).replace(/\r\n/g,'\n');
+  expect(wiki).toBe('+ 가사\n|| 青い空へ ||\n|| 세카이에 ||\n|| 푸른 하늘로 ||\n|| 宇宙へ ||\n|| 소라에 ||\n|| 우주로 ||\n|| 宇宙を ||\n|| 소라오 ||\n|| 우주를 ||');
+  const [textDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'결과 TXT 저장',exact:true}).click()]);
+  const textStream=await textDownload.createReadStream();let wikiFile='';for await(const chunk of textStream!)wikiFile+=chunk.toString();
+  expect(wikiFile.replace(/\r\n/g,'\n')).toBe(wiki);
 
   const downloadPromise=page.waitForEvent('download');
   await page.getByRole('button',{name:'프로젝트 저장',exact:true}).click();

@@ -49,8 +49,7 @@ export function wikiLiteral(value: string): string {
   return value.replace(/[&<>[\]|@#*_\/{}\\=~^`:]+/g, chunk => `@<${Array.from(chunk).map(c => `&#${c.codePointAt(0)};`).join('')}>@`);
 }
 export function exportText(result: Result, mode: ExportMode): string {
-  if (mode === 'wikidot') return '+ 가사\n' + result.lines.map(l => {
-    if (!l.source.trim()) return ['|| @@ @@ ||','|| @@ @@ ||','|| @@ @@ ||'].join('\n');
+  if (mode === 'wikidot') return '+ 가사\n' + result.lines.filter(l => l.source.trim()).map(l => {
     return [l.source, lineOutput(l), l.translation || ''].map(s => `|| ${s ? wikiLiteral(s) : '@@ @@'} ||`).join('\n');
   }).join('\n');
   return result.lines.map(l => mode === 'reading' ? lineOutput(l) : l.source.trim() ?

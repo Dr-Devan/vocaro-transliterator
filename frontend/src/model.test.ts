@@ -56,11 +56,12 @@ describe('editing and export', () => {
     expect(preserveLines(result,previous).lines[0].translation).toBe('하늘로');
     expect(preserveLines({...result,lines:[{...line,source:'海へ'}]},previous).lines[0].translation).toBeUndefined();
   });
-  it('exports three rows even for blank stanzas and empty translations', () => {
-    const data = {...result,lines:[line,{id:'blank',source:'',segments:[]},line]};
-    const rows = exportText(data,'wikidot').split('\n').slice(1);
-    expect(rows).toHaveLength(9);
-    expect(rows.every(s => s.startsWith('|| ') && s.endsWith(' ||'))).toBe(true);
+  it('omits blank and whitespace-only source lines from wiki tables, preserving translation rows', () => {
+    const blank:Line={id:'blank',source:'',segments:[]};
+    const data = {...result,lines:[blank,{...line,translation:'하늘로'},blank,blank,{...blank,source:' \t　',translation:'무시할 빈 원문'},line,blank]};
+    expect(exportText(data,'wikidot')).toBe('+ 가사\n|| 空へ ||\n|| 소라에 ||\n|| 하늘로 ||\n|| 空へ ||\n|| 소라에 ||\n|| @@ @@ ||');
+    expect(data.lines).toHaveLength(7);
+    expect(exportText({...result,lines:[blank]},'wikidot')).toBe('+ 가사\n');
     expect(exportText(result,'triple')).toBe('空へ\n소라에\n');
   });
   it('escapes table separators, links, HTML and escape markers', () => {
