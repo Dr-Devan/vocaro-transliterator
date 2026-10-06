@@ -1,5 +1,6 @@
 import type {DictionaryEntry, Result, Segment} from './model';
 import {hiragana, isKana, transliterate, RULE_VERSION, convertReading} from './transliteration';
+import {supplementalReadings, supplementTokens} from './supplemental-readings';
 export type Morpheme = {surface:string; readingForm:string; partOfSpeech:string[]; isOov:boolean; begin:number; end:number};
 export type Engine = {tokenize(text:string):Morpheme[]; readings(surface:string,pos:string):string[]};
 export type Override = {line:number; start:number; end:number; surface:string; reading:string; hangul:string};
@@ -20,13 +21,14 @@ export function analyzeLocal(engine:Engine, input:AnalysisInput):Result {
   }
   const candidates=(s:Segment,pos='') => {
     const current=s.customReading || s.reading;
-    const choices=[...new Set([current,...(isKana(s.surface)?[]:engine.readings(s.surface,pos).map(hiragana))].filter(r=>r&&isKana(r)))];
+    const supplement=supplementalReadings.find(e=>e.surface===s.surface)?.readings || [];
+    const choices=[...new Set([current,...supplement,...(isKana(s.surface)?[]:engine.readings(s.surface,pos).map(hiragana))].filter(r=>r&&isKana(r)))];
     s.candidates=choices.map(reading=>({reading,hangul:transliterate(reading).hangul}));return s;
   };
   const literal=(surface:string,start:number,end:number):Segment=>({surface,start,end,reading:'',hangul:' ',kind:'separator',attach:false,warnings:[]});
   const tokenize=(source:string,offset=0,fragment=false):Segment[] => {
     const result:Segment[]=[],chars=Array.from(source);let end=0;
-    for(const token of engine.tokenize(source)) {
+    for(const token of supplementTokens(source,engine.tokenize(source))) {
       const start=token.begin,stop=token.end;
       if(start>end) result.push(literal(chars.slice(end,start).join(''),offset+end,offset+start));
       const surface=chars.slice(start,stop).join(''),pos=token.partOfSpeech[0];
@@ -35,6 +37,7 @@ export function analyzeLocal(engine:Engine, input:AnalysisInput):Result {
         let reading=hiragana(isKana(surface)?surface:token.readingForm);
         if(pos==='助詞' && ['は','へ','を'].includes(surface)) reading=({'は':'わ','へ':'え','を':'お'} as Record<string,string>)[surface];
         const warnings:string[]=[];
+        if(token.readingNote) warnings.push(token.readingNote);
         if(fragment) warnings.push('사전 적용으로 나뉜 구간입니다. 읽기를 확인해 주세요.');
         else {
           if(token.isOov&&!isKana(surface)) warnings.push('사전에 없는 표현입니다.');

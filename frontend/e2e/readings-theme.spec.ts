@@ -1,5 +1,21 @@
 import { test, expect } from '@playwright/test';
 
+test('archaic 短し stays one word with a selectable reading through review and reload',async({page})=>{
+  await page.goto('./');
+  await page.getByLabel('일본어 가사',{exact:true}).fill('短し生命に想い巡らすよ');
+  await page.getByRole('button',{name:'발음 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue(/^미지카시 /);
+  await expect(page.getByRole('button',{name:'短し',exact:true})).toHaveClass(/needs-review/);
+  await page.getByRole('button',{name:'短し',exact:true}).click();
+  await page.getByRole('button',{name:'みじかし 미지카시',exact:true}).click();
+  await page.getByRole('button',{name:'수정 적용'}).click();
+  await expect(page.getByRole('button',{name:'短し',exact:true})).not.toHaveClass(/needs-review/);
+  await page.getByRole('button',{name:'다시 변환'}).click();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue(/^미지카시 /);
+  await page.reload();
+  await expect(page.getByLabel('1행 한글 발음')).toHaveValue(/^미지카시 /);
+});
+
 test('sokuon survives morphological boundaries and exports', async ({page,context}) => {
   await context.grantPermissions(['clipboard-read','clipboard-write']);
   await page.goto('./');

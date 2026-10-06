@@ -1,5 +1,5 @@
 import table from './kana-table.json';
-export const RULE_VERSION = 'vocaro-2026-10-02.3';
+export const RULE_VERSION = 'vocaro-2026-10-06.4';
 export const hiragana = (s: string) => s.normalize('NFKC').replace(/[ァ-ヶ]/g,c => String.fromCharCode(c.charCodeAt(0)-0x60));
 export const isKana = (s: string) => !!s && /^[ぁ-ゖー]+$/u.test(hiragana(s));
 const vowels = ['あかさたなはまやらわがざだばぱぁゃ','いきしちにひみりゐぎじぢびぴぃ','うくすつぬふむゆるぐずづぶぷぅゅゔ','えけせてねへめれゑげぜでべぺぇ','おこそとのほもよろをごぞどぼぽぉょ'];

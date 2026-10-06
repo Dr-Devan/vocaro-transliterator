@@ -5,6 +5,7 @@ import { download, parseDraft, restore, STORAGE } from './draft';
 import { useTheme } from './theme';
 import { analyzeBrowser, prepareEngine, useEngineStatus } from './browser-engine';
 import { convertReading, RULE_VERSION } from './transliteration';
+import { supplementalReadings } from './supplemental-readings';
 import type { AnalysisInput } from './analyzer';
 import { Icon, IconButton } from './Icon';
 import './style.css';
@@ -175,7 +176,7 @@ function App() {
     <dialog ref={dialog} onCancel={e => {if (editBusy) e.preventDefault(); else setSelection(null);}} onClose={() => setSelection(null)} aria-labelledby="edit-title">
       <div className="dialog-header"><h2 id="edit-title">읽기 수정 <span lang="ja">{rangeSurface}</span></h2><IconButton icon="close" label="닫기"  disabled={editBusy} onClick={() => setSelection(null)} /></div>
       {selected && pending(selected) && <div className="notice">{reviewReasons(selected).join(' ')}</div>}
-      {selection && rangeEnd === selection.segment && (selected?.candidates?.length || 0) > 1 && <fieldset className="reading-candidates"><legend>읽기 후보</legend>{selected!.candidates!.map(c => <button type="button" key={c.reading} aria-pressed={reading === c.reading} disabled={editBusy} onClick={() => {setReading(c.reading);setHangul(c.hangul);setReadingDirty(false);setEditError('');}}><span lang="ja">{c.reading}</span><span>{c.hangul}</span></button>)}</fieldset>}
+      {selection && rangeEnd === selection.segment && !!selected?.candidates?.length && (selected.candidates.length > 1 || supplementalReadings.some(e=>e.surface===selected.surface)) && <fieldset className="reading-candidates"><legend>읽기 후보</legend>{selected.candidates.map(c => <button type="button" key={c.reading} aria-pressed={reading === c.reading} disabled={editBusy} onClick={() => {setReading(c.reading);setHangul(c.hangul);setReadingDirty(false);setEditError('');}}><span lang="ja">{c.reading}</span><span>{c.hangul}</span></button>)}</fieldset>}
       <label htmlFor="range-end">수정 구간의 끝 <span>여러 단어를 하나로 읽을 때 선택</span></label><select id="range-end" disabled={editBusy} value={rangeEnd} onChange={e => {setRangeEnd(Number(e.target.value));setReadingDirty(true);setReading('');setHangul('');setAllOccurrences(false);}}>{selectedRow?.segments.map((s,i) => selection && i >= selection.segment && s.kind === 'word' ? <option key={i} value={i}>{s.surface}까지</option> : null)}</select>
       <label htmlFor="reading">일본어 읽기 <span>히라가나 / 가타카나</span></label><div className="reading-row"><input id="reading" lang="ja" value={reading} maxLength={1000} disabled={editBusy} onChange={e => {setReading(e.target.value); setReadingDirty(true);}}/><button className="secondary" disabled={editBusy || !reading.trim()} onClick={fromReading}>{editBusy ? '변환 중…' : '발음 계산'}</button></div>
       <label htmlFor="hangul">한글 발음 <span>직접 수정할 수도 있어요</span></label><input id="hangul" value={hangul} maxLength={2000} disabled={editBusy} onChange={e => {setHangul(e.target.value); setReadingDirty(false);}}/>
